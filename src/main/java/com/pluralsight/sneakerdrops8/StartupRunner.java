@@ -1,9 +1,9 @@
-package com.pluralsight.sneakerdrops;
+package com.pluralsight.sneakerdrops8;
 
-import com.pluralsight.sneakerdrops.data.BrandRepository;
-import com.pluralsight.sneakerdrops.data.SneakerRepository;
-import com.pluralsight.sneakerdrops.models.Brand;
-import com.pluralsight.sneakerdrops.models.Sneaker;
+import com.pluralsight.sneakerdrops8.data.BrandRepository;
+import com.pluralsight.sneakerdrops8.data.SneakerRepository;
+import com.pluralsight.sneakerdrops8.models.Brand;
+import com.pluralsight.sneakerdrops8.models.Sneaker;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
@@ -39,6 +39,7 @@ public class StartupRunner implements CommandLineRunner {
             System.out.println("7) Add a sneaker");
             System.out.println("8) Update price");
             System.out.println("9) Delete a sneaker");
+            System.out.println("10) Search by brand");
             System.out.println("0) Quit");
             System.out.print("Choose: ");
 
@@ -52,6 +53,7 @@ public class StartupRunner implements CommandLineRunner {
                 case 7 -> addSneaker(myScanner);
                 case 8 -> updatePrice(myScanner);
                 case 9 -> deleteSneaker(myScanner);
+                case 10 -> searchByBrand(myScanner);
                 case 0 -> running = false;
                 default -> System.out.println("Unknown option.");
             }
@@ -61,7 +63,7 @@ public class StartupRunner implements CommandLineRunner {
     private void listSneakers() {
         System.out.println("You have " + sneakerRepository.count() + " sneakers:");
         for (Sneaker s : sneakerRepository.findAll()) {
-            System.out.println(s.getId() + " - " + s.getModel() + " (" + s.getPrice() + ")");
+            System.out.println(s.getId() + " - " + s.getModel() + " (" + s.getPrice() + ") [" + s.getBrand().getName() + "]");
         }
     }
 
@@ -111,7 +113,7 @@ public class StartupRunner implements CommandLineRunner {
         if (sneaker == null) {
             System.out.println("No sneaker with that id.");
         } else {
-            System.out.println(sneaker.getId() + " - " + sneaker.getModel() + " (" + sneaker.getPrice() + ")");
+            System.out.println(sneaker.getId() + " - " + sneaker.getModel() + " (" + sneaker.getPrice() + ") [" + sneaker.getBrand().getName() + "]");
         }
     }
 
@@ -123,9 +125,23 @@ public class StartupRunner implements CommandLineRunner {
         double price = myScanner.nextDouble();
         System.out.print("Release year: ");
         int year = myScanner.nextInt();
-        Sneaker sneaker = new Sneaker(model, price, year);
+
+        // show available brands
+        System.out.println("Available brands:");
+        for (Brand b : brandRepository.findAll()) {
+            System.out.println(b.getId() + ") " + b.getName());
+        }
+        System.out.print("Choose brand id: ");
+        int brandId = myScanner.nextInt();
+        Brand brand = brandRepository.findById((long) brandId).orElse(null);
+        if (brand == null) {
+            System.out.println("No brand with that id. Sneaker not saved.");
+            return;
+        }
+
+        Sneaker sneaker = new Sneaker(model, price, year, brand);
         sneakerRepository.save(sneaker);
-        System.out.println("Saved: " + sneaker.getId() + " - " + sneaker.getModel());
+        System.out.println("Saved: " + sneaker.getId() + " - " + sneaker.getModel() + " [" + sneaker.getBrand().getName() + "]");
     }
 
     private void updatePrice(Scanner myScanner) {
@@ -154,6 +170,24 @@ public class StartupRunner implements CommandLineRunner {
         }
     }
 
+    private void searchByBrand(Scanner myScanner) {
+        System.out.println("Available brands:");
+        for (Brand b : brandRepository.findAll()) {
+            System.out.println(b.getId() + ") " + b.getName());
+        }
+        System.out.print("Choose brand id: ");
+        int brandId = myScanner.nextInt();
+        Brand brand = brandRepository.findById((long) brandId).orElse(null);
+        if (brand == null) {
+            System.out.println("No brand with that id.");
+        } else {
+            List<Sneaker> results = sneakerRepository.findByBrand(brand);
+            for (Sneaker s : results) {
+                System.out.println(s.getModel() + " (" + s.getPrice() + ")");
+            }
+        }
+    }
+
     private void seedData() {
         if (brandRepository.count() == 0) {
             brandRepository.save(new Brand("Nike"));
@@ -163,14 +197,20 @@ public class StartupRunner implements CommandLineRunner {
             brandRepository.save(new Brand("Reebok"));
         }
         if (sneakerRepository.count() == 0) {
-            sneakerRepository.save(new Sneaker("Air Max 90", 129.99, 1990));
-            sneakerRepository.save(new Sneaker("Ultraboost", 179.99, 2015));
-            sneakerRepository.save(new Sneaker("574", 89.99, 1988));
-            sneakerRepository.save(new Sneaker("Suede Classic", 74.99, 1968));
-            sneakerRepository.save(new Sneaker("Club C 85", 79.99, 1985));
-            sneakerRepository.save(new Sneaker("Air Force 1", 109.99, 1982));
-            sneakerRepository.save(new Sneaker("Gazelle", 99.99, 1968));
-            sneakerRepository.save(new Sneaker("Dunk Low", 119.99, 1985));
+            Brand nike = brandRepository.findByName("Nike");
+            Brand adidas = brandRepository.findByName("Adidas");
+            Brand newBalance = brandRepository.findByName("New Balance");
+            Brand puma = brandRepository.findByName("Puma");
+            Brand reebok = brandRepository.findByName("Reebok");
+
+            sneakerRepository.save(new Sneaker("Air Max 90", 129.99, 1990, nike));
+            sneakerRepository.save(new Sneaker("Ultraboost", 179.99, 2015, adidas));
+            sneakerRepository.save(new Sneaker("574", 89.99, 1988, newBalance));
+            sneakerRepository.save(new Sneaker("Suede Classic", 74.99, 1968, puma));
+            sneakerRepository.save(new Sneaker("Club C 85", 79.99, 1985, reebok));
+            sneakerRepository.save(new Sneaker("Air Force 1", 109.99, 1982, nike));
+            sneakerRepository.save(new Sneaker("Gazelle", 99.99, 1968, adidas));
+            sneakerRepository.save(new Sneaker("Dunk Low", 119.99, 1985, nike));
         }
     }
 }
